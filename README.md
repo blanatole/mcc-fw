@@ -1,66 +1,79 @@
-# Phân loại Clickbait Đa phương thức (Tiếng Việt & Tiếng Anh)
+# 🔎 Phân loại Clickbait Đa phương thức (Tiếng Việt & Tiếng Anh)
 
-Dự án này tập trung vào việc phân loại clickbait trong các bài đăng trên mạng xã hội bằng cách sử dụng các mô hình đa phương thức, kết hợp thông tin từ cả văn bản và hình ảnh. Dự án hỗ trợ cả bộ dữ liệu tiếng Việt (ViClickbait) và tiếng Anh (WebisClickbaitCorpus2017).
+Dự án này tập trung vào việc **phân loại clickbait trong các bài đăng trên mạng xã hội** bằng cách sử dụng các mô hình **đa phương thức**, kết hợp thông tin từ **📝 văn bản** và **🖼️ hình ảnh**.  
 
-## Cài đặt
+👉 Dự án hỗ trợ cả hai bộ dữ liệu:  
+- 🇻🇳 **ViClickbait-2025 (Tiếng Việt)**  
+- 🇺🇸 **WebisClickbaitCorpus2017 (Tiếng Anh)**
 
-1.  **Tạo môi trường ảo (khuyến nghị):**
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
+---
 
-2.  **Cài đặt các thư viện cần thiết:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+## ⚙️ Cài đặt
 
-## Dữ liệu
+1. **Tạo môi trường ảo (khuyến nghị):**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
 
-Để chạy các thử nghiệm, bạn cần tải xuống và xử lý các bộ dữ liệu. Các thư mục dữ liệu thô (`ViClickbait-2025` và `WebisClickbaitCorpus2017`) đã được thêm vào `.gitignore`.
+2. **Cài đặt các thư viện cần thiết:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-### 1. ViClickbait (Tiếng Việt)
+---
 
-1.  **Cấu trúc thư mục:** Tạo cấu trúc thư mục sau:
-    ```
-    data/
-    └── ViClickbait-2025/
-        ├── clickbait_dataset_vietnamese.csv
-        └── images/
-            ├── image1.jpg
-            └── ...
-    ```
+## 📂 Dữ liệu
 
-2.  **Tạo tệp Key:** Chạy kịch bản sau để tạo tệp `data_key_viclickbait.csv`:
-    ```bash
-    python3 preprocessing/create_viclickbait.py
-    ```
+Để chạy thử nghiệm, bạn cần tải xuống và xử lý các bộ dữ liệu.  
+Các thư mục dữ liệu thô (`ViClickbait-2025`, `WebisClickbaitCorpus2017`) đã được thêm vào `.gitignore`.
 
-### 2. WebisClickbaitCorpus2017 (Tiếng Anh)
+### 1. 🇻🇳 ViClickbait (Tiếng Việt)
 
-1.  **Tải dữ liệu:** Tải các tệp `train` và `test` từ [Zenodo](https://zenodo.org/records/5530410) và lưu chúng vào thư mục `data`.
-    *   Test: `wget -O data/clickbait17-test-170720.zip 'https://zenodo.org/records/5530410/files/clickbait17-test-170720.zip?download=1'`
-    *   Train: `wget -O data/clickbait17-train-170630.zip 'https://zenodo.org/records/5530410/files/clickbait17-train-170630.zip?download=1'`
+1. **Cấu trúc thư mục:**
+   ```
+   data/
+   └── ViClickbait-2025/
+       ├── clickbait_dataset_vietnamese.csv
+       └── images/
+           ├── image1.jpg
+           └── ...
+   ```
 
-2.  **Giải nén:** Giải nén cả hai tệp vào thư mục `data/WebisClickbaitCorpus2017`.
-    ```bash
-    unzip data/clickbait17-train-170630.zip -d data/WebisClickbaitCorpus2017
-    unzip data/clickbait17-test-170720.zip -d data/WebisClickbaitCorpus2017
-    ```
+2. **Tạo tệp Key:**
+   ```bash
+   python3 preprocessing/create_viclickbait.py
+   ```
 
-3.  **Tạo tệp Key:** Chạy kịch bản sau để gộp, chia lại dữ liệu (80/10/10) và tạo tệp `data_key_webis2017.csv`:
-    ```bash
-    python3 preprocessing/create_webis2017.py
-    ```
+### 2. 🇺🇸 WebisClickbaitCorpus2017 (Tiếng Anh)
 
-## Cách chạy thử nghiệm
+1. **Tải dữ liệu từ Zenodo:**
+   ```bash
+   wget -O data/clickbait17-test-170720.zip "https://zenodo.org/records/5530410/files/clickbait17-test-170720.zip?download=1"
+   wget -O data/clickbait17-train-170630.zip "https://zenodo.org/records/5530410/files/clickbait17-train-170630.zip?download=1"
+   ```
 
-Dưới đây là các lệnh để chạy các thử nghiệm đã được thực hiện. Các tập lệnh này sử dụng cờ `--testing` để chạy trên một mẫu nhỏ của dữ liệu. Để huấn luyện trên toàn bộ bộ dữ liệu, hãy xóa cờ `--testing`.
+2. **Giải nén vào thư mục `data/WebisClickbaitCorpus2017`:**
+   ```bash
+   unzip data/clickbait17-train-170630.zip -d data/WebisClickbaitCorpus2017
+   unzip data/clickbait17-test-170720.zip -d data/WebisClickbaitCorpus2017
+   ```
 
-### Thử nghiệm trên bộ dữ liệu ViClickbait (Tiếng Việt)
+3. **Tạo tệp Key (gộp + chia lại dữ liệu 80/10/10):**
+   ```bash
+   python3 preprocessing/create_webis2017.py
+   ```
 
-### 1. PhoBERT-base + ViT + ITC + ITM
+---
 
+## 🧪 Cách chạy thử nghiệm
+
+> ⚡ Các tập lệnh hỗ trợ cờ `--testing` để chạy trên một mẫu nhỏ.  
+> Để huấn luyện trên **toàn bộ dữ liệu**, hãy ❌ bỏ cờ `--testing`.
+
+### 📊 Trên bộ dữ liệu ViClickbait (🇻🇳)
+
+#### 1. PhoBERT-base + ViT + ITC + ITM
 ```bash
 python3 models/run_mm_late.py \
   --txt_model_name phobert \
@@ -72,8 +85,7 @@ python3 models/run_mm_late.py \
   --save_model --save_preds
 ```
 
-### 2. PhoBERT-base + ViT + ITC
-
+#### 2. PhoBERT-base + ViT + ITC
 ```bash
 python3 models/run_mm_late.py \
   --txt_model_name phobert \
@@ -84,8 +96,7 @@ python3 models/run_mm_late.py \
   --save_model --save_preds
 ```
 
-### 3. PhoBERT-large + ViT + ITC + ITM
-
+#### 3. PhoBERT-large + ViT + ITC + ITM
 ```bash
 python3 models/run_mm_late.py \
   --txt_model_name phobert-large \
@@ -95,11 +106,13 @@ python3 models/run_mm_late.py \
   --use_tim_loss --beta_itm 0.1 \
   --task 7 --epochs 15 \
   --save_model --save_preds
+```
 
-### Thử nghiệm trên bộ dữ liệu WebisClickbaitCorpus2017 (Tiếng Anh)
+---
+
+### 📊 Trên bộ dữ liệu WebisClickbaitCorpus2017 (🇺🇸)
 
 #### 1. Bertweet + ViT + ITC + ITM
-
 ```bash
 python3 models/run_mm_late.py \
   --txt_model_name bertweet \
@@ -111,15 +124,13 @@ python3 models/run_mm_late.py \
   --save_model --save_preds
 ```
 
-```
+---
 
-## Kết quả
+## 📈 Kết quả
 
-### Kết quả trên bộ dữ liệu ViClickbait
+### 🇻🇳 ViClickbait
 
-Bảng dưới đây tóm tắt hiệu suất của các cấu hình mô hình khác nhau trên tập dữ liệu thử nghiệm, dựa trên epoch có điểm F1-macro cao nhất.
-
-| Cấu hình mô hình | Epoch tốt nhất | F1-macro | F1-weighted | Precision-macro | Recall-macro | Loss |
+| 🛠️ Cấu hình mô hình | 🏆 Epoch tốt nhất | 🎯 F1-macro | ⚖️ F1-weighted | 🎯 Precision-macro | 🔄 Recall-macro | 📉 Loss |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `PhoBERT-base` + `ViT` + `ITC` + `ITM` | 6 | 0.8360 | 0.8575 | 0.8309 | 0.8420 | 0.6540 |
 | `PhoBERT-base` + `ViT` + `ITC` | 4 | 0.8427 | 0.8633 | 0.8375 | 0.8488 | 0.5467 |
@@ -127,17 +138,19 @@ Bảng dưới đây tóm tắt hiệu suất của các cấu hình mô hình k
 | `PhoBERT-large` + `ViT` + `ITC` + `ITM` | 3 | 0.8382 | 0.8584 | 0.8301 | 0.8496 | 0.5736 |
 | `PhoBERT-large` + `ViT` + `ITC` | 4 | 0.8444 | 0.8683 | 0.8609 | 0.8324 | 0.5908 |
 
-Để biết thêm chi tiết, vui lòng tham khảo `report_detailed_29082025.md`.
+---
 
+### 🇺🇸 WebisClickbaitCorpus2017
 
-### Kết quả trên bộ dữ liệu WebisClickbaitCorpus2017
-
-Bảng dưới đây tóm tắt hiệu suất của các cấu hình mô hình khác nhau trên tập dữ liệu thử nghiệm, dựa trên epoch có điểm F1-macro cao nhất.
-
-| Cấu hình mô hình | Epoch tốt nhất | F1-macro | F1-weighted | Precision-macro | Recall-macro | Loss |
+| 🛠️ Cấu hình mô hình | 🏆 Epoch tốt nhất | 🎯 F1-macro | ⚖️ F1-weighted | 🎯 Precision-macro | 🔄 Recall-macro | 📉 Loss |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
 | `bertweet` + `ViT` + `ITC` + `ITM` | 1 | 0.8195 | 0.8664 | 0.8123 | 0.8277 | 0.6657 |
 | `bertweet` + `ViT` + `ITC` | 1 | 0.8210 | 0.8674 | 0.8136 | 0.8295 | 0.6341 |
 | `bertweet` + `ViT` + `ITM` | 1 | 0.8187 | 0.8652 | 0.8093 | 0.8302 | 0.4243 |
 
-Để biết thêm chi tiết, vui lòng tham khảo `report_detailed_02092025.md`.
+---
+
+## 📚 Báo cáo chi tiết
+
+- [`docs/report_detailed_29082025.md`](docs/report_detailed_29082025.md) (ViClickbait)  
+- [`docs/report_detailed_02092025.md`](docs/report_detailed_02092025.md) (WebisClickbaitCorpus2017)
