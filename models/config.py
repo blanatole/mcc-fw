@@ -74,6 +74,12 @@ class Config(object):
             self.data = data_key[cols]
             self.num_labels = 2
             self.batch_size = 16
+        elif args.task == 8:
+            # WebisClickbait-2017 (binary)
+            cols = [c for c in ["tweet_id","text","label","split","image"] if c in data_key.columns]
+            self.data = data_key[cols]
+            self.num_labels = 2
+            self.batch_size = 32
         self.img_fmt = IMG_FMT[args.task]
         self.task_name = TASKS[args.task]
         self.classes = CLASSES[args.task] if args.task in CLASSES else None
@@ -121,6 +127,7 @@ TASKS = {
     5:"mic",
     6:"msd",
     7:"viclick",
+    8:"webis2017",
 }
 
 # Dynamically resolve project root and data/results directories
@@ -142,6 +149,7 @@ PATH = {
     5: DATA_PATH + "data_key_mic.csv",
     6: DATA_PATH + "data_key_msd.csv",
     7: _VCLICK_PATH,
+    8: DATA_PATH + "data_key_webis2017.csv",
     }
 
 IMG_FMT ={
@@ -153,6 +161,7 @@ IMG_FMT ={
     5: DATA_PATH + "MIC/spc_imgs_twitter/{}_1.jpg",
     6: DATA_PATH +'MSD/dataset_image/{}.jpg',
     7: None,  # ViClickbait uses absolute/normalized paths from key
+    8: None,  # Webis2017 uses absolute paths from key
 }
 
 
@@ -162,7 +171,8 @@ CLASSES = {2:['image adds and text is represented',
               'image does not adds and text is not represented'],
             3:['neutral', 'positive', 'negative'],
             6:['not sarcastic','sarcastic'],
-            7:['non-clickbait','clickbait']
+            7:['non-clickbait','clickbait'],
+            8:['no-clickbait','clickbait']
             }
 
 EMPTY_IMG = DATA_PATH + "MIC/empty_image.png"

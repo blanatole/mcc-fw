@@ -197,6 +197,8 @@ class Tweet_Preprocessing():
         """
         Normalize a raw Tweet
         """
+        if not isinstance(tweet, str):
+            tweet = ''
         for punct in self.special_puncts:
             tweet = tweet.replace(punct, self.special_puncts[punct])
 

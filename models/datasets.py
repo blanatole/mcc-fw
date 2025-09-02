@@ -1,5 +1,6 @@
 import sys
 import os
+import pandas as pd
 # Ensure the preprocessing package is resolvable regardless of CWD
 _CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 _PREPROC_DIR = os.path.normpath(os.path.join(_CURRENT_DIR, "../preprocessing"))
@@ -183,41 +184,26 @@ class MM_Dataset(Dataset):
             inputs = torch.load(inputs_file_path)
         else:
             text = self.tweet_preprocessing.normalizeTweet(self.text[index]) if self.normalization else self.text[index]
-            if self.empty_image == None:
-                #print("not empy image")
+            img_path = self.img_paths[index] if self.img_paths is not None else self.img_file_fmt.format(self.data_ids[index])
+
+            # Handle cases with no image path
+            if pd.isna(img_path) or img_path == '':
+                from PIL import Image as _Image
+                image = _Image.new("RGB", (224, 224), (0, 0, 0))
+            else:
                 try:
-                    if self.img_paths is not None:
-                        img_path = self.img_paths[index]
-                        image = Image.open(img_path).convert("RGB")
-                    else:
-                        image = Image.open(self.img_file_fmt.format(self.data_ids[index])).convert("RGB")
-                except:
-                    # count error and fallback to placeholder
+                    image = Image.open(img_path).convert("RGB")
+                except (IOError, FileNotFoundError):
                     self.image_error_count += 1
                     self.image_error_indices.append(int(index))
+                    # Try with .png fallback for jpg errors
                     try:
-                        if self.img_paths is not None:
-                            p = str(self.img_paths[index] or "")
-                            alt = p.rsplit('.',1)[0] + ".png" if "." in p else p
-                            image = Image.open(alt).convert("RGB")
-                        else:
-                            image = Image.open(self.img_file_fmt.replace("jpg","png").format(self.data_ids[index])).convert("RGB")
-                    except:
-                        try:
-                            image = Image.open(self.empty_image).convert("RGB")
-                        except:
-                            from PIL import Image as _Image
-                            image = _Image.new("RGB", (224, 224), (0, 0, 0))
-            else:
-                # if an explicit empty image exists, use it; otherwise synthesize a black image
-                try:
-                    if self.empty_image is not None:
-                        image = Image.open(self.empty_image).convert("RGB")
-                    else:
-                        raise FileNotFoundError
-                except Exception:
-                    from PIL import Image as _Image
-                    image = _Image.new("RGB", (224, 224), (0, 0, 0))
+                        alt_path = os.path.splitext(img_path)[0] + '.png'
+                        image = Image.open(alt_path).convert("RGB")
+                    except (IOError, FileNotFoundError):
+                        # Final fallback to a black image
+                        from PIL import Image as _Image
+                        image = _Image.new("RGB", (224, 224), (0, 0, 0))
 
             inputs = self.processor(
                 text = text, 

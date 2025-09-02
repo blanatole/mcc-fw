@@ -61,3 +61,8 @@ venv/
 
 api-worker-linux-x64
 
+
+
+# Datasets
+data/ViClickbait-2025/
+data/WebisClickbaitCorpus2017/
