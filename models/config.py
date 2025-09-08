@@ -79,7 +79,8 @@ class Config(object):
             cols = [c for c in ["tweet_id","text","label","split","image"] if c in data_key.columns]
             self.data = data_key[cols]
             self.num_labels = 2
-            self.batch_size = 32
+            # Reduce batch size for large backbones (e.g., DeBERTa-v3-large + ViT)
+            self.batch_size = 8
         self.img_fmt = IMG_FMT[args.task]
         self.task_name = TASKS[args.task]
         self.classes = CLASSES[args.task] if args.task in CLASSES else None
@@ -191,6 +192,7 @@ MODEL_DIR_DICT = {
     "bert": "bert-base-uncased",            # Sử dụng tên model trực tiếp
     "bertweet": "vinai/bertweet-base",      # Sử dụng tên model trực tiếp
     "roberta": "roberta-base",              # Sử dụng tên model trực tiếp
+    "deberta-v3-large": "microsoft/deberta-v3-large",
     "bernice": "jhu-clsp/bernice",         # Sử dụng tên model trực tiếp
     "phobert": "vinai/phobert-base",      # Switch to PhoBERT-base for Vietnamese
     "phobert-large": "vinai/phobert-large",

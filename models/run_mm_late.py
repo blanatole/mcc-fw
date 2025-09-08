@@ -20,7 +20,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 # ------ ARGS -------------------------------------------------------
 parser = argparse.ArgumentParser(description='run late fusion models')
-parser.add_argument('--txt_model_name', type=str, choices=["bert","bernice","bertweet","roberta","phobert", "phobert-large"],help='model name')
+parser.add_argument('--txt_model_name', type=str, choices=["bert","bernice","bertweet","roberta","deberta-v3-large","phobert", "phobert-large"],help='model name')
 parser.add_argument('--img_model_name', type=str, choices=["vit","beit","deit","resnet50", "resnet152"],help='model name')
 parser.add_argument('--fusion_name', type=str,choices=["xatt", "concat", "attention","concat_cnn", "aspect-att","gmu"], help='fusion method')
 parser.add_argument('--use_clip_loss', action='store_true', help='use contrastive Loss')

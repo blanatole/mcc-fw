@@ -9,7 +9,8 @@ from transformers import (
     AutoImageProcessor,
     ViTFeatureExtractor,
     AutoTokenizer,
-    AutoModel
+    AutoModel,
+    ViTModel,
 )
 import pandas as pd
 from utils import (
@@ -57,22 +58,38 @@ class MM_Model(nn.Module):
         self.img_model_name = img_model_name
         txt_model_dir = MODEL_DIR_DICT[self.txt_model_name]
         img_model_dir = MODEL_DIR_DICT[self.img_model_name]
-        self.dual_encoder = VisionTextDualEncoderModel.from_vision_text_pretrained(
+
+        # Some text models (e.g., DeBERTa-v3) do not expose pooler_output expected by VisionTextDualEncoder.
+        # In that case, use standalone encoders and build features manually.
+        self.use_dual_encoder = (self.txt_model_name not in {"deberta-v3-large"})
+        if self.use_dual_encoder:
+            self.dual_encoder = VisionTextDualEncoderModel.from_vision_text_pretrained(
                 img_model_dir, txt_model_dir
             )
+        else:
+            self.text_model = AutoModel.from_pretrained(txt_model_dir)
+            self.vision_model = ViTModel.from_pretrained(img_model_dir)
 
 
         #for param in self.dual_encoder.parameters():
         #    param.requires_grad = False
-        # freeze vision
-        for name, param in self.dual_encoder.named_parameters():
-            if 'vision' in name:
-                param.requires_grad = False
+        # freeze vision (for dual encoder) to match prior behavior
+        if self.use_dual_encoder:
+            for name, param in self.dual_encoder.named_parameters():
+                if 'vision' in name:
+                    param.requires_grad = False
 
         self.dropout = nn.Dropout(dropout)
 
-        txt_feat_size = self.dual_encoder.text_model.config.hidden_size
-        img_feat_size = self.dual_encoder.vision_model.config.hidden_size
+        if self.use_dual_encoder:
+            txt_feat_size = self.dual_encoder.text_model.config.hidden_size
+            img_feat_size = self.dual_encoder.vision_model.config.hidden_size
+        else:
+            txt_feat_size = self.text_model.config.hidden_size
+            img_feat_size = self.vision_model.config.hidden_size
+        # unify dims for pooling-based operations (e.g., ITC) when encoders differ (e.g., DeBERTa 1024 vs ViT 768)
+        self.txt_proj_pool = nn.Linear(txt_feat_size, fixed_feat_size)
+        self.img_proj_pool = nn.Linear(img_feat_size, fixed_feat_size)
 
         self.fc_Q = nn.Linear(txt_feat_size, fixed_feat_size)
         self.fc_K = nn.Linear(img_feat_size, fixed_feat_size)
@@ -82,8 +99,12 @@ class MM_Model(nn.Module):
         self.aspectattention = nn.Linear(fixed_feat_size, 1)
         self.m = nn.Softmax(dim=1)
 
-        txt_feat_size = self.dual_encoder.text_model.config.hidden_size
-        img_feat_size = self.dual_encoder.vision_model.config.hidden_size
+        if self.use_dual_encoder:
+            txt_feat_size = self.dual_encoder.text_model.config.hidden_size
+            img_feat_size = self.dual_encoder.vision_model.config.hidden_size
+        else:
+            txt_feat_size = self.text_model.config.hidden_size
+            img_feat_size = self.vision_model.config.hidden_size
         self.linear_fusion = nn.Linear(txt_feat_size + img_feat_size, fixed_feat_size)
         self.relu = nn.ReLU()
         self.linear_cls = nn.Linear(fixed_feat_size, self.num_labels)
@@ -102,20 +123,15 @@ class MM_Model(nn.Module):
                 xt_xv = self.relu(self.linear_fusion(xt_xv))
                 return xt_xv
 
-            if self.fusion_name=="attention":
+            if self.fusion_name in {"attention","xatt"}:
                 print("attention")
-                #x_t: 16 X 128 X 768
-                #x_v: 16 X 197 X 768
-
-                # QXK^t: 128X768 197X768 --> 128X197 (attention scores)
-                # 128X197  197X768  -->  128X768 (output)
-
-                N, L, E = x_t.size()
+                # x_t: [B, Lt, Ht], x_v: [B, Lv, Hv]
+                # Project to common size for attention
                 Q, K, V  = self.fc_Q(x_t), self.fc_K(x_v), self.fc_V(x_v)
                 scale = K.size(-1) ** -0.5
-                x_v, attn_output_weight = self.attention(Q, K, V, scale)
-                x_v = x_v.view(N, L, E)
-                xt_xv = torch.cat((x_t[:, 0, :], x_v[:, 0, :]), dim=1)
+                context, attn_output_weight = self.attention(Q, K, V, scale)  # [B, Lt, fixed_feat_size]
+                # Fuse CLS tokens (text cls with attended vision cls)
+                xt_xv = torch.cat((x_t[:, 0, :], context[:, 0, :]), dim=1)
                 xt_xv = self.relu(self.linear_fusion(xt_xv))
                 return xt_xv
 
@@ -155,17 +171,34 @@ class MM_Model(nn.Module):
 
 
     def forward(self,ids,mask,pixel_values,tim_inputs=None,iadds_task=False):
-        outputs = self.dual_encoder(
+        if self.use_dual_encoder:
+            outputs = self.dual_encoder(
                 input_ids=ids,
                 attention_mask=mask,
                 pixel_values=pixel_values,
                 return_loss=True,
             )
-        xv_last_hidden = outputs.vision_model_output.last_hidden_state # BXLXE
-        x_v_pool = outputs.vision_model_output.pooler_output # BXE
-        xt_last_hidden = outputs.text_model_output.last_hidden_state # BXLXE
-        x_t_pool = outputs.text_model_output.pooler_output # BXE
-        logits_per_text = outputs.logits_per_text # this is the text-image similarity score
+            xv_last_hidden = outputs.vision_model_output.last_hidden_state # BXLXE
+            x_v_pool = outputs.vision_model_output.pooler_output # BXE
+            xt_last_hidden = outputs.text_model_output.last_hidden_state # BXLXE
+            x_t_pool = outputs.text_model_output.pooler_output # BXE
+            logits_per_text = outputs.logits_per_text # similarity matrix for ITC
+        else:
+            # Text forward
+            text_outputs = self.text_model(input_ids=ids, attention_mask=mask, return_dict=True)
+            xt_last_hidden = text_outputs.last_hidden_state  # [B, Lt, H]
+            # pool by CLS (token 0) or mean as fallback
+            x_t_pool = xt_last_hidden[:, 0, :]
+            # Vision forward
+            vision_outputs = self.vision_model(pixel_values=pixel_values, return_dict=True)
+            xv_last_hidden = vision_outputs.last_hidden_state  # [B, Lv, H]
+            x_v_pool = vision_outputs.pooler_output if hasattr(vision_outputs, 'pooler_output') and vision_outputs.pooler_output is not None else xv_last_hidden[:, 0, :]
+            # Project to common dim then build cosine-sim logits for ITC (B x B)
+            t = self.txt_proj_pool(x_t_pool)
+            v = self.img_proj_pool(x_v_pool)
+            t = F.normalize(t, dim=-1)
+            v = F.normalize(v, dim=-1)
+            logits_per_text = torch.matmul(t, v.t())
         xt_xv = self.mm_fusion(xt_last_hidden,xv_last_hidden,
         x_v_pool=x_v_pool,x_t_pool=x_t_pool)
         mm_features = xt_xv
@@ -174,7 +207,7 @@ class MM_Model(nn.Module):
 
 
         # TIM
-        if tim_inputs is not None:
+        if tim_inputs is not None and self.use_dual_encoder:
             tim_ids, tim_mask = tim_inputs
             tim_outputs = self.dual_encoder(
                 input_ids=tim_ids,

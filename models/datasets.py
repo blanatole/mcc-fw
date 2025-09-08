@@ -58,7 +58,7 @@ class TxtOnly_Dataset(Dataset):
 
         ids = inputs["input_ids"]
         new_inputs["ids"] = torch.tensor(ids, dtype=torch.long)
-        if self.model_name not in  {"roberta","bernice"}:
+        if self.model_name not in  {"roberta","bernice","deberta-v3-large"}:
             token_type_ids = inputs["token_type_ids"]
             new_inputs['token_type_ids'] = torch.tensor(token_type_ids, dtype=torch.long)
         mask = inputs["attention_mask"]
