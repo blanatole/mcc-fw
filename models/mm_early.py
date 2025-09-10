@@ -404,15 +404,16 @@ class MMEarly_Model(object):
                 patience_counter += 1
                 logger.info("Patience counter: {}/{}".format(patience_counter, patience))
             
-            if patience_counter >= patience:
-                logger.info("Early stopping triggered after {} epochs".format(epoch + 1))
-                break
-            
+            # Always save metrics before checking early stopping
             if val_filename != None and (epoch%2 == 0 or epoch==epochs-1):
                 logger.info("Compute metrics (val)")
                 metrics_val = agg_metrics_val(res_val, metric_names, self.num_labels)
                 pd.DataFrame(metrics_val).to_csv(val_filename,index=False)
                 logger.info("{} saved!".format(val_filename))
+            
+            if patience_counter >= patience:
+                logger.info("Early stopping triggered after {} epochs".format(epoch + 1))
+                break
 
             if te_dataloader != None:
                 # predict test

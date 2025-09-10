@@ -58,9 +58,11 @@ class TxtOnly_Dataset(Dataset):
 
         ids = inputs["input_ids"]
         new_inputs["ids"] = torch.tensor(ids, dtype=torch.long)
-        if self.model_name not in  {"roberta","bernice","deberta-v3-large"}:
-            token_type_ids = inputs["token_type_ids"]
-            new_inputs['token_type_ids'] = torch.tensor(token_type_ids, dtype=torch.long)
+        # Only BERT-like models use token_type_ids; RoBERTa/XLM-R/DeBERTa/PhoBERT/Bernice do not
+        if self.model_name in {"bert"}:
+            token_type_ids = inputs.get("token_type_ids")
+            if token_type_ids is not None:
+                new_inputs['token_type_ids'] = torch.tensor(token_type_ids, dtype=torch.long)
         mask = inputs["attention_mask"]
         new_inputs['mask'] = torch.tensor(mask, dtype=torch.long)
         new_inputs['target'] = torch.tensor(self.labels[index], dtype=torch.long)

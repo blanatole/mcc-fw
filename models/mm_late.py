@@ -490,7 +490,7 @@ class MMLate_Model(object):
         #optimizer= optim.Adam(self.model.parameters(), lr= lr, weight_decay = weight_decay)
         res_val, res_te = [], []
         best_f1_macro = 0.0
-        patience = 5
+        patience = 3
         patience_counter = 0
 
         for epoch in range(epochs):
@@ -629,10 +629,7 @@ class MMLate_Model(object):
                 patience_counter += 1
                 logger.info("Patience counter: {}/{}".format(patience_counter, patience))
 
-            if patience_counter >= patience:
-                logger.info("Early stopping triggered after {} epochs".format(epoch + 1))
-                break
-
+            # Always save metrics before checking early stopping
             if val_filename != None:
                 logger.info("Compute metrics (val)")
                 metrics_val = agg_metrics_val(res_val, metric_names, self.num_labels)
@@ -649,6 +646,10 @@ class MMLate_Model(object):
                     metrics_te = agg_metrics_val(res_te, metric_names, self.num_labels)
                     pd.DataFrame(metrics_te).to_csv(te_filename,index=False)
                     logger.info("{} saved!".format(te_filename))
+
+            if patience_counter >= patience:
+                logger.info("Early stopping triggered after {} epochs".format(epoch + 1))
+                break
 
         if model_path != None:
             torch.save(self.model.state_dict(), model_path)
@@ -667,8 +668,7 @@ class MMLate_Model(object):
     def eval(self, dataloader, loss_fn, tim_loss_fn = None,iadds_loss_fn=None):
         eval_acc = []
         eval_loss = []
-        soft_preds_0 = []
-        soft_preds_1 = []
+        soft_probs_pos = []
         predictions = []
         labels = []
         data_ids = []
@@ -738,8 +738,12 @@ class MMLate_Model(object):
             # Get the predictions
             if not self.multilabel:
                 soft_pred = self.softmax(output)
-                #soft_pred_0 = soft_pred[:,0]
-                #soft_pred_1 = soft_pred[:,1]
+                # For binary tasks, keep probability of positive class (class 1)
+                if soft_pred.size(1) > 1:
+                    soft_probs_pos.append(soft_pred[:, 1].detach().cpu())
+                else:
+                    # In case of a single logit, apply sigmoid as a fallback
+                    soft_probs_pos.append(torch.sigmoid(output.squeeze()).detach().cpu())
                 pred = torch.argmax(soft_pred, dim=1)
                 target = torch.argmax(label,dim = 1)
             else:
@@ -759,8 +763,14 @@ class MMLate_Model(object):
         eval_acc = np.mean(eval_acc)
 
         print(f'loss: {eval_loss:.4f} acc: {(eval_acc):.4f}\n')
-        #y_soft_pred_0 = torch.stack(soft_preds_0)
-        #y_soft_pred_1 = torch.stack(soft_preds_1)
+        # Concatenate probabilities (positive class)
+        if len(soft_probs_pos) > 0:
+            if isinstance(soft_probs_pos[0], torch.Tensor) and soft_probs_pos[0].dim() == 1:
+                y_prob_pos = torch.cat(soft_probs_pos)
+            else:
+                y_prob_pos = torch.cat(soft_probs_pos).view(-1)
+        else:
+            y_prob_pos = None
         y_pred = torch.stack(predictions)
         #print("y_pred_0",y_soft_pred_0)
         #print("y_pred_1",y_soft_pred_0)
@@ -773,8 +783,7 @@ class MMLate_Model(object):
             "data_id": data_ids,
             "loss": eval_loss,
             "predictions": y_pred,
-            #"soft_pred_0": y_soft_pred_0,
-            #"soft_pred_1": y_soft_pred_1,
+            "prob_pos": y_prob_pos,
             "labels": y
         }
 

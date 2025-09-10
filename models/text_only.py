@@ -94,7 +94,7 @@ class TextModel(object):
             self.tokenizer = AutoTokenizer.from_pretrained(self.model_dir) 
         
         # model
-        if self.model_name == "roberta":
+        if self.model_name in {"roberta","xlm-roberta"}:
             self.model = RoBERTa(self.model_dir, self.num_labels, dropout=self.dropout)
         elif self.model_name in {"bernice","phobert"}:
             self.model = BERNICE(self.model_dir, self.num_labels, dropout=self.dropout)
@@ -225,7 +225,7 @@ class TextModel(object):
                 # zero the parameter gradients
                 optimizer.zero_grad()
                 # forward
-                if self.model_name not in {"roberta", "bernice", "phobert"}:
+                if self.model_name not in {"roberta", "xlm-roberta", "bernice", "phobert"}:
                     token_type_ids=dl['token_type_ids'].to(device)
                     output=self.model(
                         ids=ids,
@@ -334,15 +334,16 @@ class TextModel(object):
                 patience_counter += 1
                 logger.info("Patience counter: {}/{}".format(patience_counter, patience))
             
-            if patience_counter >= patience:
-                logger.info("Early stopping triggered after {} epochs".format(epoch + 1))
-                break
-                
+            # Always save metrics before checking early stopping
             if val_filename != None and (epoch%2 == 0 or epoch==epochs-1):
                 logger.info("Compute metrics (val)")
                 metrics_val = agg_metrics_val(res_val, metric_names, self.num_labels)
                 pd.DataFrame(metrics_val).to_csv(val_filename,index=False)
                 logger.info("{} saved!".format(val_filename))
+                
+            if patience_counter >= patience:
+                logger.info("Early stopping triggered after {} epochs".format(epoch + 1))
+                break
 
             if te_dataloader != None:
                 # predict test
@@ -376,11 +377,11 @@ class TextModel(object):
             mask = dl['mask'].to(device)
             label = dl['target'].to(device)
             data_id = dl['data_id'].to(device)
-            if self.model_name not in {"roberta", "bernice", "phobert"}:
+            if self.model_name not in {"roberta", "xlm-roberta", "bernice", "phobert"}:
                 token_type_ids = dl['token_type_ids'].to(device)
             # Compute logits
             with torch.no_grad():
-                if self.model_name not in {"roberta", "bernice", "phobert"}:
+                if self.model_name not in {"roberta", "xlm-roberta", "bernice", "phobert"}:
                     output = self.model(ids=ids, mask=mask, token_type_ids=token_type_ids)
                 else:
                     # roberta, bernice

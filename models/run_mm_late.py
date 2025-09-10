@@ -42,6 +42,7 @@ parser.add_argument('--eval_txt_test', action='store_true', help='eval txt test'
 parser.add_argument('--save_model', action='store_true', help='save model')
 parser.add_argument('--load_saved_model', action='store_true', help='load saved model')
 parser.add_argument('--save_preds', action='store_true', help='eval test')
+parser.add_argument('--save_val_preds', action='store_true', help='also save validation predictions with probabilities')
 parser.add_argument('--use_saved_features', action='store_true', help='use preprocessed features')
 
 args = parser.parse_args()
@@ -119,18 +120,42 @@ def main():
             te_filename=te_filename
             )
 
+        # Always prefer best checkpoint for evaluation/predictions if available
+        try:
+            best_model_path = model_path.replace('.pth', '_best.pth') if model_path is not None else None
+            if best_model_path is not None and os.path.exists(best_model_path):
+                logger.info(f"Loading best checkpoint for eval: {best_model_path}")
+                mm_model.load_saved_model(best_model_path)
+        except Exception as e:
+            logger.warning(f"Could not load best checkpoint for eval: {e}")
+
         if args.save_preds:
             predictions = mm_model.eval(test_loader,loss_fn,tim_loss_fn=tim_loss_fn,iadds_loss_fn=iadds_loss_fn)
             te_pred_df = pd.DataFrame(data={
                 "data_id": predictions["data_id"].tolist(),
                 "label": predictions["labels"].tolist(),
-                "prediction":predictions["predictions"].tolist()
+                "prediction":predictions["predictions"].tolist(),
+                "prob_pos": predictions["prob_pos"].tolist() if predictions.get("prob_pos") is not None else None,
             })
             preds_filename = "{}-{}-{}_task{}_seed{}_{}_{}preds.csv".format(
                 args.txt_model_name,args.img_model_name,args.fusion_name,
                 args.task,args.seed,loss_str,nsamples_str)
             te_pred_df.to_csv(results_dir+preds_filename,index=False)
             logger.info("{} saved".format(results_dir+preds_filename))
+
+        if args.save_val_preds:
+            predictions_val = mm_model.eval(val_loader,loss_fn,tim_loss_fn=tim_loss_fn,iadds_loss_fn=iadds_loss_fn)
+            va_pred_df = pd.DataFrame(data={
+                "data_id": predictions_val["data_id"].tolist(),
+                "label": predictions_val["labels"].tolist(),
+                "prediction":predictions_val["predictions"].tolist(),
+                "prob_pos": predictions_val["prob_pos"].tolist() if predictions_val.get("prob_pos") is not None else None,
+            })
+            val_preds_filename = "{}-{}-{}_task{}_seed{}_{}_{}preds_val.csv".format(
+                args.txt_model_name,args.img_model_name,args.fusion_name,
+                args.task,args.seed,loss_str,nsamples_str)
+            va_pred_df.to_csv(results_dir+val_preds_filename,index=False)
+            logger.info("{} saved".format(results_dir+val_preds_filename))
         if args.eval_txt_test:
             # evaluate model (test) of last epochs model
             logger.info("Evaluate and compute metrics (txt test)")
@@ -159,8 +184,18 @@ def main():
             #######################################################################
     else:
         # load pretrained model
-        mm_model.load_saved_model(model_path)
-        print("model loaded")
+        # Prefer best checkpoint if available
+        try:
+            best_model_path = model_path.replace('.pth', '_best.pth') if model_path is not None else None
+            if best_model_path is not None and os.path.exists(best_model_path):
+                logger.info(f"Loading best checkpoint: {best_model_path}")
+                mm_model.load_saved_model(best_model_path)
+            else:
+                mm_model.load_saved_model(model_path)
+            print("model loaded")
+        except Exception as e:
+            logger.error(f"Failed to load checkpoint: {e}")
+            raise
         # evaluate model
         logger.info("Evaluate and compute metrics (test)")
         predictions = mm_model.eval(test_loader,loss_fn,tim_loss_fn=tim_loss_fn,iadds_loss_fn=iadds_loss_fn)
@@ -171,23 +206,38 @@ def main():
             "data_id": predictions["data_id"].tolist(),
             "label": predictions["labels"].tolist(),
             "prediction":predictions["predictions"].tolist(),
-            #"soft-0": predictions["soft_pred_0"].tolist(),
-            #"soft-1": predictions["soft_pred_1"].tolist()
+            "prob_pos": predictions["prob_pos"].tolist() if predictions.get("prob_pos") is not None else None,
         })
-        preds_filename = "{}-{}-{}_task{}_seed{}_{}_{}preds_lm.csv".format(
+        preds_filename = "{}-{}-{}_task{}_seed{}_{}_{}preds.csv".format(
                 args.txt_model_name,args.img_model_name,args.fusion_name,
                 args.task,args.seed,loss_str,nsamples_str)
         pred_df.to_csv(results_dir+preds_filename,index=False)
         logger.info("{} saved".format(preds_filename))
 
         # metrics
-        metrics = compute_metrics(predictions,cfg.num_labels, multilabel=cfg.multilabel)
+        metrics = compute_metrics(predictions,cfg.num_labels, multi_label=cfg.multilabel)
         metrics_pd = pd.DataFrame(metrics)
         res_filename = "{}-{}-{}_task{}_seed{}_{}_{}metrics_lm.csv".format(
             args.txt_model_name,args.img_model_name,args.fusion_name,
             args.task,args.seed,loss_str,nsamples_str)
         metrics_pd.to_csv(results_dir+res_filename,index=False)
         logger.info("{} saved".format(results_dir+res_filename))
+
+        # Optionally also save validation predictions in load mode
+        if args.save_val_preds:
+            logger.info("Evaluate and save validation predictions")
+            predictions_val = mm_model.eval(val_loader,loss_fn,tim_loss_fn=tim_loss_fn,iadds_loss_fn=iadds_loss_fn)
+            va_pred_df = pd.DataFrame(data={
+                "data_id": predictions_val["data_id"].tolist(),
+                "label": predictions_val["labels"].tolist(),
+                "prediction":predictions_val["predictions"].tolist(),
+                "prob_pos": predictions_val["prob_pos"].tolist() if predictions_val.get("prob_pos") is not None else None,
+            })
+            val_preds_filename = "{}-{}-{}_task{}_seed{}_{}_{}preds_val.csv".format(
+                args.txt_model_name,args.img_model_name,args.fusion_name,
+                args.task,args.seed,loss_str,nsamples_str)
+            va_pred_df.to_csv(results_dir+val_preds_filename,index=False)
+            logger.info("{} saved".format(results_dir+val_preds_filename))
 
 
 

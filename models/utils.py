@@ -332,12 +332,12 @@ def compute_metrics(res, num_classes, multi_label=False):
             }
     else:
         metrics = {
-            "f1_weighted": F1Score(task="multilabel", num_classes=num_classes, average="weighted"),
-            "f1_macro" : F1Score(task="multilabel", num_classes=num_classes, average="macro"),
-            "precision_weighted": Precision(task="multilabel", num_classes=num_classes, average="weighted"),
-            "precision_macro" : Precision(task="multilabel", num_classes=num_classes, average="macro"),
-            "recall_weighted": Recall(task="multilabel", num_classes=num_classes, average="weighted"),
-            "recall_macro" : Recall(task="multilabel", num_classes=num_classes, average="macro"),
+            "f1_weighted": F1Score(task="multilabel", num_labels=num_classes, average="weighted").to(device),
+            "f1_macro" : F1Score(task="multilabel", num_labels=num_classes, average="macro").to(device),
+            "precision_weighted": Precision(task="multilabel", num_labels=num_classes, average="weighted").to(device),
+            "precision_macro" : Precision(task="multilabel", num_labels=num_classes, average="macro").to(device),
+            "recall_weighted": Recall(task="multilabel", num_labels=num_classes, average="weighted").to(device),
+            "recall_macro" : Recall(task="multilabel", num_labels=num_classes, average="macro").to(device),
             }
     
     y, y_pred = res["labels"], res["predictions"]
@@ -345,6 +345,27 @@ def compute_metrics(res, num_classes, multi_label=False):
     for name,metric in metrics.items():
         results[name] = metric(y_pred, y).item()
     results["loss"] = res["loss"]
+    
+    # Calculate accuracy
+    if not multi_label:
+        # For multiclass: compare predicted class with true class
+        if y_pred.dim() > 1:
+            y_pred_class = torch.argmax(y_pred, dim=1)
+        else:
+            y_pred_class = y_pred.long()
+        
+        if y.dim() > 1:
+            y_true_class = torch.argmax(y, dim=1)
+        else:
+            y_true_class = y.long()
+            
+        accuracy = (y_pred_class == y_true_class).float().mean().item() * 100
+    else:
+        # For multilabel: compare predicted labels with true labels
+        y_pred_binary = torch.round(torch.sigmoid(y_pred))
+        accuracy = (y_pred_binary == y).float().mean().item() * 100
+    results["accuracy"] = accuracy
+    
     metric_list, res_list = [],[]
     for metric, res in results.items():
         metric_list.append(metric)

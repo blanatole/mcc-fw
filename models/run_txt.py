@@ -17,8 +17,8 @@ logger = logging.getLogger(__name__)
 
 # ------ ARGS -------------------------------------------------------
 parser = argparse.ArgumentParser(description='run text-only models')
-parser.add_argument('--model_name', type=str, choices=["bert","bernice","bertweet","roberta","phobert"],help='model name')
-parser.add_argument('--task', type=int, choices=[0,1,2,3,4,5,6,7], help='task to run')
+parser.add_argument('--model_name', type=str, choices=["bert","bernice","bertweet","roberta","xlm-roberta","phobert"],help='model name')
+parser.add_argument('--task', type=int, choices=[0,1,2,3,4,5,6,7,8], help='task to run')
 parser.add_argument('--use_loss_correction', action='store_true', help='use Loss correction (only for binary cases)')
 parser.add_argument('--epochs', type=int, default=2, help='number of epochs')
 parser.add_argument('--weight_decay', type=float, default=0.01, help='weight decay param')
@@ -41,6 +41,8 @@ np.random.seed(args.seed)
 results_dir = results_dir_txt
 if args.testing:
     results_dir += "testing/"
+import os
+os.makedirs(results_dir, exist_ok=True)
 
 logger.info("Model: {}, Task: {}, Epochs: {}, LC:{}, seed: {}".format(
     args.model_name, args.task, args.epochs, args.use_loss_correction, args.seed))

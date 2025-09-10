@@ -154,3 +154,4 @@ python3 models/run_mm_late.py \
 
 - [`docs/report_detailed_29082025.md`](docs/report_detailed_29082025.md) (ViClickbait)  
 - [`docs/report_detailed_02092025.md`](docs/report_detailed_02092025.md) (WebisClickbaitCorpus2017)
+- [`docs/report_detailed_10092025.md`](docs/report_detailed_10092025.md) (Cập nhật A1/A2 + baseline XLM-R)

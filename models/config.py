@@ -178,7 +178,7 @@ CLASSES = {2:['image adds and text is represented',
 
 EMPTY_IMG = DATA_PATH + "MIC/empty_image.png"
 TDATA5 = "../data/text_data_mic.csv"
-metric_names = ["f1_weighted","f1_macro","precision_weighted","precision_macro","recall_weighted","recall_macro","loss"]
+metric_names = ["f1_weighted","f1_macro","precision_weighted","precision_macro","recall_weighted","recall_macro","accuracy","loss"]
 RES_PATH = os.path.join(_PROJ_ROOT, "results") + os.sep
 results_dir_txt = RES_PATH + "txt_only/"
 results_dir_img = RES_PATH + "img_only/"
@@ -192,6 +192,7 @@ MODEL_DIR_DICT = {
     "bert": "bert-base-uncased",            # Sử dụng tên model trực tiếp
     "bertweet": "vinai/bertweet-base",      # Sử dụng tên model trực tiếp
     "roberta": "roberta-base",              # Sử dụng tên model trực tiếp
+    "xlm-roberta": "FacebookAI/xlm-roberta-base",
     "deberta-v3-large": "microsoft/deberta-v3-large",
     "bernice": "jhu-clsp/bernice",         # Sử dụng tên model trực tiếp
     "phobert": "vinai/phobert-base",      # Switch to PhoBERT-base for Vietnamese
